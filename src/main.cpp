@@ -1,2 +1,7 @@
+#include <print>
 
-int main(int argc, char const *argv[]) { return 0; }
+int main()
+{
+    std::println("Hello World");
+    return 0;
+}

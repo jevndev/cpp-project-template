@@ -6,10 +6,12 @@
 # | $$    $$| $$  | $$| $$\  $$$| $$        | $$  | $$  \ $$
 # |  $$$$$$/|  $$$$$$/| $$ \  $$| $$       /$$$$$$|  $$$$$$/
 #  \______/  \______/ |__/  \__/|__/      |______/ \______/
-cmake_minimum_required(VERSION 3.22)
-project(project VERSION 0.0)
+set(PROJECT_NAME "project")
 
-set(CMAKE_CXX_STANDARD 23)
+cmake_minimum_required(VERSION 3.22)
+project(${PROJECT_NAME} VERSION 0.0)
+
+set(CMAKE_CXX_STANDARD 26)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 #   /$$$$$$   /$$$$$$  /$$   /$$ /$$$$$$$   /$$$$$$  /$$$$$$$$  /$$$$$$
@@ -20,7 +22,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED True)
 #  /$$  \ $$| $$  | $$| $$  | $$| $$  \ $$| $$    $$| $$       /$$  \ $$
 # |  $$$$$$/|  $$$$$$/|  $$$$$$/| $$  | $$|  $$$$$$/| $$$$$$$$|  $$$$$$/
 #  \______/  \______/  \______/ |__/  |__/ \______/ |________/ \______/
-file(GLOB_RECURSE SOURCES "src/*.cpp")
+file(GLOB_RECURSE SOURCES "src/*.cpp" "src/*.hpp")
 
 #  /$$$$$$$$ /$$$$$$$$  /$$$$$$  /$$$$$$$$ /$$$$$$ /$$   /$$  /$$$$$$
 # |__  $$__/| $$_____/ /$$__  $$|__  $$__/|_  $$_/| $$$ | $$ /$$__  $$
@@ -31,31 +33,44 @@ file(GLOB_RECURSE SOURCES "src/*.cpp")
 #    | $$   | $$$$$$$$|  $$$$$$/   | $$    /$$$$$$| $$ \  $$|  $$$$$$/
 #    |__/   |________/ \______/    |__/   |______/|__/  \__/ \______/
 
-include(FetchContent)
-FetchContent_Declare(
-    googletest
-    URL https://github.com/google/googletest/archive/df1544bcee0c7ce35cd5ea0b3eb8cc81855a4140.zip
-)
+option(BUILD_TESTS "Build tests" ${PROJECT_IS_TOP_LEVEL})
 
-set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
-FetchContent_MakeAvailable(googletest)
+if(BUILD_TESTS)
+    set(TEST_NAME "run_tests")
+    include(FetchContent)
+    FetchContent_Declare(
+        googletest
+        GIT_REPOSITORY https://github.com/google/googletest.git
+        GIT_TAG v1.17.0
+        FIND_PACKAGE_ARGS NAMES GTest
+    )
+    set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+    FetchContent_MakeAvailable(googletest)
 
-enable_testing()
+    enable_testing()
 
-FILE(GLOB_RECURSE TEST_SOURCES "test/*.cpp")
+    file(GLOB_RECURSE TEST_SOURCES "test/*.cpp" "test/*.hpp")
 
-add_executable(
-    run_tests
-    ${TEST_SOURCES}
-)
+    add_executable(${TEST_NAME} ${TEST_SOURCES})
 
-target_link_libraries(
-    run_tests
-    GTest::gtest_main
-)
+    target_link_libraries(${TEST_NAME} PRIVATE
+        jde::jde
+        GTest::gtest_main
+    )
 
-include(GoogleTest)
-gtest_discover_tests(run_tests)
+
+    target_include_directories(${TEST_NAME} PRIVATE
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+        $<INSTALL_INTERFACE:include>
+    )
+    target_include_directories(${TEST_NAME} PRIVATE "src")
+
+    include(GoogleTest)
+    gtest_discover_tests(${TEST_NAME})
+    add_custom_target(build_tests DEPENDS ${TEST_NAME})
+endif()
+
+
 
 #  /$$       /$$$$$$ /$$$$$$$   /$$$$$$
 # | $$      |_  $$_/| $$__  $$ /$$__  $$
@@ -66,6 +81,16 @@ gtest_discover_tests(run_tests)
 # | $$$$$$$$ /$$$$$$| $$$$$$$/|  $$$$$$/
 # |________/|______/|_______/  \______/
 
+include(FetchContent)
+FetchContent_Declare(
+  jde
+  GIT_REPOSITORY https://github.com/jevndev/jde.git
+  GIT_TAG        v1.0.2
+  FIND_PACKAGE_ARGS NAMES jde
+)
+FetchContent_MakeAvailable(jde)
+
+
 
 #  /$$$$$$$$ /$$$$$$  /$$$$$$$   /$$$$$$  /$$$$$$$$ /$$$$$$$$
 # |__  $$__//$$__  $$| $$__  $$ /$$__  $$| $$_____/|__  $$__/
@@ -75,4 +100,9 @@ gtest_discover_tests(run_tests)
 #    | $$  | $$  | $$| $$  \ $$| $$  \ $$| $$         | $$
 #    | $$  | $$  | $$| $$  | $$|  $$$$$$/| $$$$$$$$   | $$
 #    |__/  |__/  |__/|__/  |__/ \______/ |________/   |__/
-add_executable(out ${SOURCES})
+add_executable(${PROJECT_NAME} ${SOURCES})
+target_include_directories(${PROJECT_NAME} PRIVATE "src")
+target_link_libraries(${PROJECT_NAME} PRIVATE jde::jde)
+target_compile_options(${PROJECT_NAME} PRIVATE -Wall -Wextra -Werror -freflection)
+
+add_custom_target(build_project DEPENDS ${PROJECT_NAME})
